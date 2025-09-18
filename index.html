@@ -113,9 +113,9 @@
       try {
         const resp = await fetch("/.netlify/functions/estado");
         const data = await resp.json();
-        let texto = `Multimodo: ${data.estado}`;
+        let texto = `Multi: ${data.estado}`;
         if (data.temp !== null) {
-          texto += ` (${data.temp}°C)`;
+          texto += `Temp: (${data.temp}°C)`;
         }
         if (data.fecha) {
           texto += ` - Último envío: ${new Date(data.fecha).toLocaleString()}`;
@@ -259,4 +259,5 @@ setInterval(alternarViento, 30000);          // viento cada 10 segundos
 </script>
 </body>
 </html>
+
 
