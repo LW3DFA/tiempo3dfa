@@ -9,7 +9,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
-  
   /* 🌌 Fondo y fuente base */
   body {
     margin: 0;
@@ -30,23 +29,41 @@
     max-width: 600px;
     padding: 15px;
     text-align: center;
-   /* background-color: rgba(0, 0, 0, 0.6); /* semitransparente para contraste */
     border-radius: 10px;
   }
 
-  /* 🖋️ Estilos de texto */
+  /* Estilos de texto */
   .titulo {
     font-size: 4em;
     margin-bottom: 2px;
-     color: #66E44C;
+    color: #66E44C;
     text-shadow: 2px -2px 3px #FFFFFF;
   }
 
+  /* Estilo base del título del monitor (no cambia) */
   .titulo-multi {
-  color: lime;                    /* Verde brillante */
-  text-shadow: 2px 2px 4px black; /* sombra opcional */
+    font-size: 1.6em;
+    font-weight: 700;
+    color: lime;
+    text-shadow: 2px 2px 4px black;
+    margin: 6px 0 2px;
   }
-	  
+  /* Variante de color para el título según estado */
+  .titulo-multi.ok { color: limegreen; }
+  .titulo-multi.falla { color: #ff4d4d; }
+  .titulo-multi.neutro { color: orange; }
+
+  /* Texto del Monitor (cambia según estado) */
+  .estado {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin: 6px 0;
+  }
+  .estado.ok { color: limegreen; }
+  .estado.falla { color: #ff4d4d; }
+  .estado.warn { color: orange; }
+  .estado.loading { color: lightgray; }
+
   .fecha {
     font-size: 1.5em;
     color: #ffffff;
@@ -76,7 +93,7 @@
     margin-top: 6px;
   }
 
-  /* 📱 Responsive para modo apaisado */
+  /* 📱 Modo Responsive para apaisado */
   @media screen and (orientation: landscape) {
     .contenedor {
       max-width: 80vw;
@@ -91,15 +108,18 @@
       font-size: 2em;
     }
   }
-</style>
+  </style>
 
 </head>
 
 <body>
-    <div class="contenedor">
-    <h2 class="titulo-multi">Estado Multi GADTM</h2>
-    <p id="multimodo">Multi: cargando...</p>  
-  <!-- <div class="titulo">ONLINE</div> -->
+  <div class="contenedor">
+    <!-- Título (tiene id para manipular desde JS) -->
+    <h2 id="tituloMulti" class="titulo-multi">Estado Multi GADTM</h2>
+
+    <!-- Texto del estado (cambia de color) -->
+    <p id="multimodo" class="estado loading">Multi: cargando...</p>
+
     <div class="fecha" id="fecha"></div>
     <div class="clock" id="localClock"></div>
     <div class="clock" id="utcClock"></div>
@@ -110,165 +130,211 @@
     </div>
     <div class="viento" id="viento">Cargando viento...</div>
   </div>
-</body>
 
-<script>
-// Monitoreo Multiprotocolo
-async function actualizarEstado() {
+  <script>
+  // -------------------------------------------
+  // Lectura del estado desde Netlify Function
+  // -------------------------------------------
+  async function actualizarEstado() {
     try {
-        const resp = await fetch("/.netlify/functions/estado");
-        const data = await resp.json();
+      const resp = await fetch("/.netlify/functions/estado");
+      const data = await resp.json();
 
-        // Usamos las claves que envía el monitor
-        let texto = `Multi: ${data["Multimodo"]}`;
-        if (data["Temp°C"] !== null) {
-            texto += ` - Temp: (${data["Temp°C"]}°C)`;
-        }
-        if (data.fecha) {
-            texto += ` - Último envío: ${new Date(data.fecha).toLocaleString()}`;
-        }
+      // Normalizar diferentes formas de llegar los campos
+      const estadoVal = data?.["Multimodo"] ?? data?.estado ?? data?.multimodo ?? null;
+      const tempVal = data?.["Temp°C"] ?? data?.temp ?? data?.tempC ?? null;
 
-        document.getElementById("multimodo").innerText = texto;
-    } catch {
-        document.getElementById("multimodo").innerText = "Error consultando estado";
+      const multimodoEl = document.getElementById("multimodo");
+      const tituloEl = document.getElementById("tituloMulti");
+
+      // Default visual
+      multimodoEl.className = 'estado loading';
+      tituloEl.className = 'titulo-multi neutro';
+
+      // Si la función devuelve mensaje específico
+      if (data?.mensaje) {
+        multimodoEl.textContent = data.mensaje;
+        multimodoEl.className = 'estado loading';
+        tituloEl.className = 'titulo-multi neutro';
+        return;
+      }
+
+      // Si no hay dato de estado válido
+      if (!estadoVal || estadoVal === "N/A") {
+        multimodoEl.textContent = "Sin datos aún";
+        multimodoEl.className = 'estado loading';
+        tituloEl.className = 'titulo-multi neutro';
+        return;
+      }
+
+      // Si tenemos estado, construimos el texto
+      let texto = `Multi: ${estadoVal}`;
+
+      if (tempVal !== null && tempVal !== undefined && tempVal !== "") {
+        texto += ` - Temp: (${tempVal}°C)`;
+      } else {
+        texto += ` - Temp: (No disponible)`;
+      }
+
+      if (data?.fecha) {
+        texto += ` - Último envío: ${new Date(data.fecha).toLocaleString()}`;
+      }
+
+      // Aplicar colores según el estado (OK o FALTA)
+      if (typeof estadoVal === 'string' && estadoVal.toUpperCase().includes("FALTA")) {
+        multimodoEl.className = 'estado falla';
+        tituloEl.className = 'titulo-multi falla';
+      } else if (String(estadoVal).toUpperCase() === "OK") {
+        multimodoEl.className = 'estado ok';
+        tituloEl.className = 'titulo-multi ok';
+      } else {
+        multimodoEl.className = 'estado warn';
+        tituloEl.className = 'titulo-multi neutro';
+      }
+
+      multimodoEl.textContent = texto;
+
+    } catch (e) {
+      // En caso de error de fetch
+      const multimodoEl = document.getElementById("multimodo");
+      const tituloEl = document.getElementById("tituloMulti");
+      multimodoEl.textContent = "Error consultando estado";
+      multimodoEl.className = 'estado falla';
+      tituloEl.className = 'titulo-multi falla';
+      console.error("Error al actualizar estado:", e);
     }
-}
+  }
 
-actualizarEstado();
-setInterval(actualizarEstado, 300000); // refresca cada 5 min
-	
-// Variables globales de viento y día actual
-let diaActual = new Date().getDate();
-let vientoVelocidad = "";
-let vientoDireccion = "";
-let mostrarVelocidad = true;
+  actualizarEstado();
+  setInterval(actualizarEstado, 300000); // refresca cada 5 min
 
-// 🧭 Matriz de 16 puntos cardinales aprox.
-const direcciones = [
-  { nombre: "N",     desde: 348.75, hasta: 11.25 },
-  { nombre: "NNE",   desde: 11.25,  hasta: 33.75 },
-  { nombre: "NE",    desde: 33.75,  hasta: 56.25 },
-  { nombre: "ENE",   desde: 56.25,  hasta: 78.75 },
-  { nombre: "E",     desde: 78.75,  hasta: 101.25 },
-  { nombre: "ESE",   desde: 101.25, hasta: 123.75 },
-  { nombre: "SE",    desde: 123.75, hasta: 146.25 },
-  { nombre: "SSE",   desde: 146.25, hasta: 168.75 },
-  { nombre: "S",     desde: 168.75, hasta: 191.25 },
-  { nombre: "SSO",   desde: 191.25, hasta: 213.75 },
-  { nombre: "SO",    desde: 213.75, hasta: 236.25 },
-  { nombre: "OSO",   desde: 236.25, hasta: 258.75 },
-  { nombre: "O",     desde: 258.75, hasta: 281.25 },
-  { nombre: "ONO",   desde: 281.25, hasta: 303.75 },
-  { nombre: "NO",    desde: 303.75, hasta: 326.25 },
-  { nombre: "NNO",   desde: 326.25, hasta: 348.75 }
-];
+  // ---------------------------
+  //    Reloj, clima, viento...
+  // ---------------------------
 
+  // Variables globales de viento y día actual
+  let diaActual = new Date().getDate();
+  let vientoVelocidad = "";
+  let vientoDireccion = "";
+  let mostrarVelocidad = true;
 
-// 🔄 Convierte grados a dirección cardinal
-function obtenerDireccionCardinal(grados) {
-  for (let dir of direcciones) {
-    if (dir.desde > dir.hasta) {
-      // Rango que cruza el 0° (ej. N)
-      if (grados >= dir.desde || grados < dir.hasta) return dir.nombre;
-    } else {
-      if (grados >= dir.desde && grados < dir.hasta) return dir.nombre;
+  // 🧭 Matriz de 16 puntos cardinales aprox.
+  const direcciones = [
+    { nombre: "N",     desde: 348.75, hasta: 11.25 },
+    { nombre: "NNE",   desde: 11.25,  hasta: 33.75 },
+    { nombre: "NE",    desde: 33.75,  hasta: 56.25 },
+    { nombre: "ENE",   desde: 56.25,  hasta: 78.75 },
+    { nombre: "E",     desde: 78.75,  hasta: 101.25 },
+    { nombre: "ESE",   desde: 101.25, hasta: 123.75 },
+    { nombre: "SE",    desde: 123.75, hasta: 146.25 },
+    { nombre: "SSE",   desde: 146.25, hasta: 168.75 },
+    { nombre: "S",     desde: 168.75, hasta: 191.25 },
+    { nombre: "SSO",   desde: 191.25, hasta: 213.75 },
+    { nombre: "SO",    desde: 213.75, hasta: 236.25 },
+    { nombre: "OSO",   desde: 236.25, hasta: 258.75 },
+    { nombre: "O",     desde: 258.75, hasta: 281.25 },
+    { nombre: "ONO",   desde: 281.25, hasta: 303.75 },
+    { nombre: "NO",    desde: 303.75, hasta: 326.25 },
+    { nombre: "NNO",   desde: 326.25, hasta: 348.75 }
+  ];
+
+  // 🔄 Convierte grados a dirección cardinal
+  function obtenerDireccionCardinal(grados) {
+    for (let dir of direcciones) {
+      if (dir.desde > dir.hasta) {
+        // Rango que cruza el 0° (ej. N)
+        if (grados >= dir.desde || grados < dir.hasta) return dir.nombre;
+      } else {
+        if (grados >= dir.desde && grados < dir.hasta) return dir.nombre;
+      }
+    }
+    return "Desconocido";
+  }
+
+  // 🗓️ Actualiza la fecha si cambia el día
+  function verificarCambioDeDia() {
+    let ahora = new Date();
+    if (ahora.getDate() !== diaActual) {
+      diaActual = ahora.getDate();
+      updateFecha();
     }
   }
-  return "Desconocido";
-}
 
-// 🗓️ Actualiza la fecha si cambia el día
-function verificarCambioDeDia() {
-  let ahora = new Date();
-  if (ahora.getDate() !== diaActual) {
-    diaActual = ahora.getDate();
-    updateFecha();
+  // 🗓️ Muestra la fecha formateada
+  function updateFecha() {
+    let now = new Date();
+    let opciones = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    };
+    let fechaFormateada = now.toLocaleDateString('es-AR', opciones);
+    document.getElementById("fecha").textContent =
+      fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1);
   }
-}
 
-// 🗓️ Muestra la fecha formateada en español
-function updateFecha() {
-  let now = new Date();
-  let opciones = {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  };
-  let fechaFormateada = now.toLocaleDateString('es-AR', opciones);
-  document.getElementById("fecha").textContent =
-    fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1);
-}
-
-// ⏰ Actualiza los relojes LU y UTC cada segundo
-function updateClocks() {
-  let now = new Date();
-  document.getElementById("localClock").textContent =
-    "LU: " + now.toLocaleTimeString('es-AR', { hour12: false });
-  document.getElementById("utcClock").textContent =
-    "UTC: " + now.toUTCString().split(" ")[4];
-}
-
-// 🌡️ Obtiene datos del clima desde OpenWeather y actualiza pantalla
-async function updateTemp() {
-  let apiKey = "6af85f92a202ebffb3cedcb4b45ad4e8";
-  let city = "Buenos Aires,AR";
-  let url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=es`;
-
-  try {
-    let res = await fetch(url);
-    let data = await res.json();
-
-    // Icono y descripción del clima
-    let descripcion = data.weather[0].description;
-    let iconCode = data.weather[0].icon;
-    let iconUrl = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
-
-    document.getElementById("iconoClima").src = iconUrl;
-    document.getElementById("textoClima").textContent =
-      descripcion.charAt(0).toUpperCase() + descripcion.slice(1);
-
-    // Temperatura y sensación térmica
-    document.getElementById("temp").textContent =
-      `Temp: ${data.main.temp.toFixed(1)} °C.
-      Sensación: ${data.main.feels_like.toFixed(1)} °C`;
-
-    
-	// Guardamos datos de viento para alternar
-        // Guardamos datos de viento para alternar
-    vientoVelocidad = (data.wind.speed * 3.6).toFixed(2); // km/h
-    vientoDireccion = data.wind.deg;
-
-  } catch (e) {
-    document.getElementById("temp").textContent = "Error al cargar";
-    document.getElementById("textoClima").textContent = "Error al cargar clima";
+  // ⏰ Actualiza los relojes LU y UTC cada segundo
+  function updateClocks() {
+    let now = new Date();
+    document.getElementById("localClock").textContent =
+      "LU: " + now.toLocaleTimeString('es-AR', { hour12: false });
+    document.getElementById("utcClock").textContent =
+      "UTC: " + now.toUTCString().split(" ")[4];
   }
-}
 
-// 🌬️ Alterna entre velocidad y dirección del viento
-function alternarViento() {
-  const direccionCardinal = obtenerDireccionCardinal(vientoDireccion);
-  document.getElementById("viento").textContent =
-    `Viento: (${direccionCardinal}) a ${vientoVelocidad} km/h`;
-}
+  // 🌡️ Obtiene datos del clima desde OpenWeather y actualiza pantalla
+  async function updateTemp() {
+    let apiKey = "6af85f92a202ebffb3cedcb4b45ad4e8";
+    let city = "Buenos Aires,AR";
+    let url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=es`;
 
+    try {
+      let res = await fetch(url);
+      let data = await res.json();
 
-// 🧠 Inicialización
-updateFecha();
-updateClocks();
-updateTemp();
-alternarViento(); // primera visualización
+      // Icono y descripción del clima
+      let descripcion = data.weather[0].description;
+      let iconCode = data.weather[0].icon;
+      let iconUrl = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
 
-// ⏱️ Timers
-setInterval(updateClocks, 1000);             // reloj cada segundo
-setInterval(updateTemp, 600000);             // clima cada 10 minutos
-setInterval(verificarCambioDeDia, 600000);   // fecha cada 10 minutos
-setInterval(alternarViento, 300000);          // viento cada 5 minutos
-</script>
+      document.getElementById("iconoClima").src = iconUrl;
+      document.getElementById("textoClima").textContent =
+        descripcion.charAt(0).toUpperCase() + descripcion.slice(1);
+
+      // Temperatura y sensación térmica
+      document.getElementById("temp").textContent =
+        `Temp: ${data.main.temp.toFixed(1)} °C.
+        Sensación: ${data.main.feels_like.toFixed(1)} °C`;
+
+      // Guardamos datos de viento para alternar
+      vientoVelocidad = (data.wind.speed * 3.6).toFixed(2); // km/h
+      vientoDireccion = data.wind.deg;
+
+    } catch (e) {
+      document.getElementById("temp").textContent = "Error al cargar";
+      document.getElementById("textoClima").textContent = "Error al cargar clima";
+    }
+  }
+
+  // 🌬️ Alterna entre velocidad y dirección del viento
+  function alternarViento() {
+    const direccionCardinal = obtenerDireccionCardinal(vientoDireccion);
+    document.getElementById("viento").textContent =
+      `Viento: (${direccionCardinal}) a ${vientoVelocidad} km/h`;
+  }
+
+  // 🧠 Inicialización
+  updateFecha();
+  updateClocks();
+  updateTemp();
+  alternarViento(); // primera visualización
+
+  // ⏱️ Timers
+  setInterval(updateClocks, 1000);             // reloj cada segundo
+  setInterval(updateTemp, 600000);             // clima cada 10 minutos
+  setInterval(verificarCambioDeDia, 600000);   // fecha cada 10 minutos
+  setInterval(alternarViento, 300000);         // viento cada 5 minutos
+  </script>
 </body>
 </html>
-
-
-
-
-
