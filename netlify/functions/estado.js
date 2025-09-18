@@ -1,12 +1,13 @@
-let ultimoEstado = { estado: "N/A", temp: null, fecha: null };
+let ultimoEstado = { "Multimodo": "N/A", "Temp°C": null, fecha: null };
 
 export async function handler(event, context) {
   if (event.httpMethod === "POST") {
     try {
       const data = JSON.parse(event.body);
+      // Guardamos con las claves exactas
       ultimoEstado = {
-        estado: data.estado,
-        temp: data.temp,
+        "Multimodo": data.estado,   // o data["Multimodo"] si querés
+        "Temp°C": data.temp,
         fecha: new Date().toISOString()
       };
       return {
@@ -18,11 +19,9 @@ export async function handler(event, context) {
     }
   }
 
-  // GET devuelve el último estado
+  // GET devuelve el último estado con claves correctas
   return {
     statusCode: 200,
     body: JSON.stringify(ultimoEstado)
   };
 }
-
-
