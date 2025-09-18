@@ -4,12 +4,14 @@ export async function handler(event, context) {
   if (event.httpMethod === "POST") {
     try {
       const data = JSON.parse(event.body);
-      // Guardamos con las claves exactas
+
+      // Guardamos con las claves exactas que envía el monitor
       ultimoEstado = {
-        "Multimodo": data.estado,   // o data["Multimodo"] si querés
-        "Temp°C": data.temp,
+        "Multimodo": data["Multimodo"],
+        "Temp°C": data["Temp°C"],
         fecha: new Date().toISOString()
       };
+
       return {
         statusCode: 200,
         body: JSON.stringify({ ok: true, recibido: ultimoEstado })
@@ -19,7 +21,7 @@ export async function handler(event, context) {
     }
   }
 
-  // GET devuelve el último estado con claves correctas
+  // GET devuelve el último estado completo
   return {
     statusCode: 200,
     body: JSON.stringify(ultimoEstado)
