@@ -108,26 +108,29 @@
 </body>
 
 <script>
- // Monitoreo Multiprotocolo
- async function actualizarEstado() {
-      try {
+// Monitoreo Multiprotocolo
+async function actualizarEstado() {
+    try {
         const resp = await fetch("/.netlify/functions/estado");
         const data = await resp.json();
-        let texto = `Multi: ${data.estado}`;
-        if (data.temp !== null) {
-          texto += ` - Temp: (${data.temp}°C)`;
+
+        // Usamos las claves que envía el monitor
+        let texto = `Multi: ${data["Multimodo"]}`;
+        if (data["Temp°C"] !== null) {
+            texto += ` - Temp: (${data["Temp°C"]}°C)`;
         }
         if (data.fecha) {
-          texto += ` - Último envío: ${new Date(data.fecha).toLocaleString()}`;
+            texto += ` - Último envío: ${new Date(data.fecha).toLocaleString()}`;
         }
-        document.getElementById("multimodo").innerText = texto;
-      } catch {
-        document.getElementById("multimodo").innerText = "Error consultando estado";
-      }
-    }
 
-  actualizarEstado();
-  setInterval(actualizarEstado, 300000); // refresca cada 5 min
+        document.getElementById("multimodo").innerText = texto;
+    } catch {
+        document.getElementById("multimodo").innerText = "Error consultando estado";
+    }
+}
+
+actualizarEstado();
+setInterval(actualizarEstado, 300000); // refresca cada 5 min
 	
 // Variables globales de viento y día actual
 let diaActual = new Date().getDate();
@@ -259,6 +262,7 @@ setInterval(alternarViento, 30000);          // viento cada 10 segundos
 </script>
 </body>
 </html>
+
 
 
 
