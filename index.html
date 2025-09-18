@@ -42,6 +42,11 @@
     text-shadow: 2px -2px 3px #FFFFFF;
   }
 
+  .titulo-multi {
+  color: lime;                    /* Verde brillante */
+  text-shadow: 2px 2px 4px black; /* sombra opcional */
+  }
+	  
   .fecha {
     font-size: 1.5em;
     color: #ffffff;
@@ -92,7 +97,7 @@
 
 <body>
     <div class="contenedor">
-    <h3>Estado Multi GADTM</h3>
+    <h2 class="titulo-multi">Estado Multi GADTM</h2>
     <p id="multimodo">Multi: cargando...</p>  
   <!-- <div class="titulo">ONLINE</div> -->
     <div class="fecha" id="fecha"></div>
@@ -258,10 +263,11 @@ alternarViento(); // primera visualización
 setInterval(updateClocks, 1000);             // reloj cada segundo
 setInterval(updateTemp, 600000);             // clima cada 10 minutos
 setInterval(verificarCambioDeDia, 600000);   // fecha cada 10 minutos
-setInterval(alternarViento, 30000);          // viento cada 10 segundos
+setInterval(alternarViento, 300000);          // viento cada 5 minutos
 </script>
 </body>
 </html>
+
 
 
 
