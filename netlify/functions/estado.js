@@ -1,5 +1,3 @@
-import fetch from "node-fetch";
-
 const owner = "LW3DFA"; // tu usuario de GitHub
 const repo = "tiempo3dfa";     // nombre del repo
 const path = "estado.json"; // archivo donde guardamos
@@ -19,7 +17,7 @@ export async function handler(event, context) {
   if (event.httpMethod === "POST") {
     try {
       const data = JSON.parse(event.body);
-      
+
       // Leo las claves que envía el monitor
       const nuevoEstado = {
         "Multimodo": data["Multimodo"],
@@ -34,6 +32,7 @@ export async function handler(event, context) {
           headers: { Authorization: `token ${githubToken}` }
         }
       );
+
       const getData = await getResp.json();
       lastSha = getData.sha;
 
