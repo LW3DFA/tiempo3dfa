@@ -1,73 +1,29 @@
-import fs from "fs";
+let ultimoEstado = { "Multimodo": "N/A", "Temp°C": null, fecha: null };
 
-const filePath = "/tmp/estado.json";
-
-export async function handler(event) {
-
-  // --------------------
-  // POST → guardar datos
-  // --------------------
+export async function handler(event, context) {
   if (event.httpMethod === "POST") {
     try {
-
       const data = JSON.parse(event.body);
 
-      const estadoActual = {
-        Multimodo: data.Multimodo ?? "N/A",
-        "Temp°C": data["Temp°C"] ?? null,
+      // Guardamos con las claves exactas que envía el monitor
+      ultimoEstado = {
+        "Multimodo": data["Multimodo"],
+        "Temp°C": data["Temp°C"],
         fecha: new Date().toISOString()
       };
 
-      fs.writeFileSync(filePath, JSON.stringify(estadoActual));
-
       return {
         statusCode: 200,
-        body: JSON.stringify({ ok: true })
+        body: JSON.stringify({ ok: true, recibido: ultimoEstado })
       };
-
-    } catch (error) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: error.message })
-      };
+    } catch (err) {
+      return { statusCode: 400, body: "Error en datos" };
     }
   }
 
-  // --------------------
-  // GET → devolver datos guardados
-  // --------------------
-  if (event.httpMethod === "GET") {
-
-    try {
-
-      if (!fs.existsSync(filePath)) {
-        return {
-          statusCode: 200,
-          body: JSON.stringify({
-            Multimodo: "Sin datos",
-            "Temp°C": null,
-            fecha: null
-          })
-        };
-      }
-
-      const data = fs.readFileSync(filePath, "utf8");
-
-      return {
-        statusCode: 200,
-        body: data
-      };
-
-    } catch (error) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: error.message })
-      };
-    }
-  }
-
+  // GET devuelve el último estado completo
   return {
-    statusCode: 405,
-    body: "Method Not Allowed"
+    statusCode: 200,
+    body: JSON.stringify(ultimoEstado)
   };
 }
