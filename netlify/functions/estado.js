@@ -1,3 +1,9 @@
+let estadoActual = {
+  Multimodo: "Sin datos",
+  "Temp°C": null,
+  fecha: null
+};
+
 export async function handler(event) {
 
   // --------------------
@@ -8,15 +14,17 @@ export async function handler(event) {
 
       const data = JSON.parse(event.body);
 
-      console.log("POST recibido:", data);
+      estadoActual = {
+        Multimodo: data.Multimodo ?? "N/A",
+        "Temp°C": data["Temp°C"] ?? null,
+        fecha: new Date().toISOString()
+      };
+
+      console.log("Estado actualizado:", estadoActual);
 
       return {
         statusCode: 200,
-        body: JSON.stringify({
-          Multimodo: data.Multimodo,
-          "Temp°C": data["Temp°C"],
-          fecha: new Date().toISOString()
-        })
+        body: JSON.stringify({ ok: true })
       };
 
     } catch (error) {
@@ -29,14 +37,12 @@ export async function handler(event) {
   }
 
   // --------------------
-  // GET → devolver algo simple
+  // GET → devolver último estado
   // --------------------
   if (event.httpMethod === "GET") {
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        mensaje: "Function activa correctamente"
-      })
+      body: JSON.stringify(estadoActual)
     };
   }
 
