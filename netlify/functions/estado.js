@@ -1,8 +1,8 @@
-import { getStore } from "@netlify/blobs";
+import fs from "fs";
+
+const filePath = "/tmp/estado.json";
 
 export async function handler(event) {
-
-  const store = getStore("monitor-multimodo");
 
   // --------------------
   // POST → guardar datos
@@ -18,7 +18,7 @@ export async function handler(event) {
         fecha: new Date().toISOString()
       };
 
-      await store.set("estado", JSON.stringify(estadoActual));
+      fs.writeFileSync(filePath, JSON.stringify(estadoActual));
 
       return {
         statusCode: 200,
@@ -38,23 +38,32 @@ export async function handler(event) {
   // --------------------
   if (event.httpMethod === "GET") {
 
-    const data = await store.get("estado");
+    try {
 
-    if (!data) {
+      if (!fs.existsSync(filePath)) {
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            Multimodo: "Sin datos",
+            "Temp°C": null,
+            fecha: null
+          })
+        };
+      }
+
+      const data = fs.readFileSync(filePath, "utf8");
+
       return {
         statusCode: 200,
-        body: JSON.stringify({
-          Multimodo: "Sin datos",
-          "Temp°C": null,
-          fecha: null
-        })
+        body: data
+      };
+
+    } catch (error) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: error.message })
       };
     }
-
-    return {
-      statusCode: 200,
-      body: data
-    };
   }
 
   return {
