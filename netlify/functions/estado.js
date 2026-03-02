@@ -1,10 +1,8 @@
-let estadoActual = {
-  Multimodo: "Sin datos",
-  "Temp°C": null,
-  fecha: null
-};
+import { getStore } from "@netlify/blobs";
 
 export async function handler(event) {
+
+  const store = getStore("monitor-multimodo");
 
   // --------------------
   // POST → guardar datos
@@ -14,13 +12,13 @@ export async function handler(event) {
 
       const data = JSON.parse(event.body);
 
-      estadoActual = {
+      const estadoActual = {
         Multimodo: data.Multimodo ?? "N/A",
         "Temp°C": data["Temp°C"] ?? null,
         fecha: new Date().toISOString()
       };
 
-      console.log("Estado actualizado:", estadoActual);
+      await store.set("estado", JSON.stringify(estadoActual));
 
       return {
         statusCode: 200,
@@ -28,7 +26,6 @@ export async function handler(event) {
       };
 
     } catch (error) {
-      console.error("Error en POST:", error);
       return {
         statusCode: 500,
         body: JSON.stringify({ error: error.message })
@@ -37,12 +34,26 @@ export async function handler(event) {
   }
 
   // --------------------
-  // GET → devolver último estado
+  // GET → devolver datos guardados
   // --------------------
   if (event.httpMethod === "GET") {
+
+    const data = await store.get("estado");
+
+    if (!data) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          Multimodo: "Sin datos",
+          "Temp°C": null,
+          fecha: null
+        })
+      };
+    }
+
     return {
       statusCode: 200,
-      body: JSON.stringify(estadoActual)
+      body: data
     };
   }
 
